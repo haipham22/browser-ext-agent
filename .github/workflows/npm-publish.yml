@@ -57,11 +57,13 @@ jobs:
         if: steps.tag.outputs.skip == 'false'
         run: pnpm -r build
 
+      - name: npm 11.5.1+ for OIDC trusted publishing
+        if: steps.tag.outputs.skip == 'false'
+        run: npm install -g npm@latest
+
       - name: Publish
         if: steps.tag.outputs.skip == 'false'
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance
 
       - name: Tag release
         if: steps.tag.outputs.skip == 'false'
