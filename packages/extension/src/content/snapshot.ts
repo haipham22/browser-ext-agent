@@ -31,7 +31,8 @@ const STRUCTURAL_TAGS = new Set([
   'section',
 ]);
 const MAX_TEXT = 80;
-const MAX_DEPTH = 15;
+// Next.js/styled-jsx sites nest deep (tinhte post body sits at depth 16+)
+const MAX_DEPTH = 30;
 /** Số entry tối đa mỗi trang snapshot — agent lật bằng offset (pagination). */
 export const SNAPSHOT_PAGE_SIZE = 200;
 
