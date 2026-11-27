@@ -34,7 +34,7 @@ const MAX_TEXT = 80;
 // No depth cap: modern sites nest 40+ levels (tinhte 16, Facebook 40) and a
 // fixed cap silently drops content per-site. Guard total work instead —
 // only interactive/text-bearing nodes print, so depth itself costs no noise.
-const MAX_NODES = 20_000;
+const MAX_NODES = 100_000;
 let visited = 0;
 /** Số entry tối đa mỗi trang snapshot — agent lật bằng offset (pagination). */
 export const SNAPSHOT_PAGE_SIZE = 200;
