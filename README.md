@@ -30,6 +30,8 @@ Built for debugging: your agent reads the page, clicks, types, scrolls, screensh
 
 ## Setup
 
+Hướng dẫn từ-zero-đến-chạy-được: **[SETUP.md](SETUP.md)**. Tóm tắt:
+
 **1. Compile & run the server**
 
 ```bash
