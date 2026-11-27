@@ -17,7 +17,7 @@ Zero to your agent driving your browser: ~5 minutes.
 git clone https://github.com/haipham22/browser-ext-agent.git
 cd browser-ext-agent
 pnpm install
-pnpm build                       # typecheck + bundle the server into packages/server/release/
+pnpm build                       # typecheck + bundle the server into packages/server/dist/
 cd packages/extension && node compile.mjs   # bundle the extension into packages/extension/release/
 cd ../..
 ```
@@ -32,7 +32,7 @@ cd ../..
 ## 3. Run the server
 
 ```bash
-node packages/server/release/index.js
+node packages/server/dist/index.js
 ```
 
 Expected log: `[browser-ext-agent] MCP ready (stdio) | WS ws://localhost:8765 | token: none`
@@ -40,8 +40,8 @@ Expected log: `[browser-ext-agent] MCP ready (stdio) | WS ws://localhost:8765 | 
 Different port/bind:
 
 ```bash
-node packages/server/release/index.js --port 9000              # different port
-node packages/server/release/index.js --host 0.0.0.0 --token <secret>   # browser on another machine
+node packages/server/dist/index.js --port 9000              # different port
+node packages/server/dist/index.js --host 0.0.0.0 --token <secret>   # browser on another machine
 ```
 
 Env equivalents: `PORT`, `HOST`, `EXT_TOKEN` (see `deployment/.env.example`).
@@ -67,7 +67,7 @@ claude mcp add browser-ext-agent -- npx -y github:haipham22/browser-ext-agent
 Or from your local clone (useful while developing the server):
 
 ```bash
-claude mcp add browser-ext-agent -- node /absolute/path/to/browser-ext-agent/packages/server/release/index.js
+claude mcp add browser-ext-agent -- node /absolute/path/to/browser-ext-agent/packages/server/dist/index.js
 ```
 
 ## 6. Try it

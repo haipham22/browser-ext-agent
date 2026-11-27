@@ -25782,6 +25782,54 @@ function registerTools(server, ctx) {
     }
   );
   server.tool(
+    "browser_scenario",
+    "Run a MULTI-STEP browser flow server-side and return ONLY the extracted data \u2014 saves context vs one snapshot per step. steps: [{action, params}] using the same actions as the individual tools (navigate/click/type/eval_js/scroll/wait_for/...; snapshot steps return only total entry count, not the outline). extract: optional JS expression evaluated in the active tab at the end (its value is the main payload). stopOnError default true.",
+    {
+      steps: external_exports.array(scenarioStepSchema).min(1),
+      extract: external_exports.string().optional(),
+      tabId: external_exports.number().int().optional(),
+      stopOnError: external_exports.boolean().optional()
+    },
+    async ({ steps, extract, tabId, stopOnError }) => {
+      const results = [];
+      for (const s of steps) {
+        try {
+          const r = await ctx.send(s.action, { ...s.params, tabId });
+          const res = r.result;
+          let summary = "";
+          if (s.action === "snapshot") {
+            summary = `total=${res?.total ?? "?"}`;
+          } else {
+            summary = JSON.stringify(res ?? {}).slice(0, 200);
+          }
+          results.push({ action: s.action, ok: true, summary });
+        } catch (e) {
+          results.push({
+            action: s.action,
+            ok: false,
+            summary: e instanceof Error ? e.message : String(e)
+          });
+          if (stopOnError !== false) {
+            break;
+          }
+        }
+      }
+      let extracted = null;
+      if (extract) {
+        try {
+          const r = await ctx.send("eval_js", { expression: extract, tabId });
+          const res = r.result;
+          extracted = res?.value ?? null;
+        } catch (e) {
+          extracted = `EXTRACT_FAILED: ${e instanceof Error ? e.message : String(e)}`;
+        }
+      }
+      return {
+        content: [{ type: "text", text: JSON.stringify({ results, extracted }, null, 1) }]
+      };
+    }
+  );
+  server.tool(
     "browser_eval",
     'Run a JS expression in a real tab and get the value. Preferred path: chrome.debugger via the extension (tabId, no Chrome flags \u2014 a "debugging this tab" banner flashes). Fallback: Playwright CDP (urlPart + CDP_URL, needs --remote-debugging-port=9222). Use for DOM probes and anything the snapshot outline cannot answer.',
     {
