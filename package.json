@@ -1,6 +1,6 @@
 {
   "name": "browser-ext-agent",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Agent controls a real browser via MCP: agent -> MCP -> server -> extension -> page",
   "license": "MIT",
   "type": "module",
@@ -24,7 +24,6 @@
   "files": [
     "packages/server/bin",
     "packages/server/dist",
-    "packages/extension/release",
     "README.md"
   ]
 }
