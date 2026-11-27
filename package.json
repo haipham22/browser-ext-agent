@@ -1,0 +1,16 @@
+{
+  "name": "browser-ext-agent",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Agent controls a real browser via MCP: agent -> MCP -> server -> extension -> page",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "dev:server": "pnpm --filter @haipham22/browser-ext-agent dev"
+  }
+}

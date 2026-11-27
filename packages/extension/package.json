@@ -1,0 +1,20 @@
+{
+  "name": "@haipham22/browser-ext-agent-extension",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "node compile.mjs",
+    "test": "vitest run",
+    "watch": "node compile.mjs --watch"
+  },
+  "dependencies": {
+    "@haipham22/browser-ext-agent-shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "esbuild": "^0.21.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

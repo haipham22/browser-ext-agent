@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { font: 13px system-ui, sans-serif; width: 260px; padding: 12px; margin: 0; }
+      h1 { font-size: 14px; margin: 0 0 10px; }
+      .row { margin: 8px 0; }
+      input[type="text"], input[type="password"] { width: 100%; box-sizing: border-box; padding: 4px 6px; }
+      button { width: 100%; padding: 8px; font-size: 13px; cursor: pointer; border: none; border-radius: 4px; }
+      #toggle-on { background: #1a7f37; color: #fff; }
+      #toggle-off { background: #c93c37; color: #fff; }
+      #status { margin-top: 10px; font-size: 12px; color: #555; }
+      .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+      .dot.on { background: #1a7f37; }
+      .dot.off { background: #999; }
+    </style>
+  </head>
+  <body>
+    <h1>Browser Ext Agent</h1>
+    <div class="row">
+      <label><input type="checkbox" id="enabled" /> Enabled (agent may drive this browser)</label>
+    </div>
+    <div class="row">
+      <input type="text" id="server-url" placeholder="ws://localhost:8765" />
+    </div>
+    <div class="row">
+      <input type="password" id="ext-token" placeholder="token (nếu server yêu cầu)" />
+    </div>
+    <div class="row"><button id="toggle-on">Enable</button></div>
+    <div class="row"><button id="toggle-off">Disable</button></div>
+    <div id="status"><span class="dot off"></span>disabled</div>
+    <script src="popup.js"></script>
+  </body>
+</html>
