@@ -3,6 +3,7 @@ import { STORAGE_KEYS, type PageCommand, type CommandResult } from '../shared/ty
 import { buildSnapshot } from './snapshot.js';
 import {
   clickByRef,
+  clickCoordsByRef,
   typeByRef,
   scrollPage,
   waitFor,
@@ -46,6 +47,8 @@ function handleAction(action: string, p: Record<string, unknown>): unknown {
       );
     case 'click':
       return clickByRef(String(p.ref));
+    case 'click_coords':
+      return clickCoordsByRef(String(p.ref));
     case 'type':
       return typeByRef(String(p.ref), String(p.text), p.submit as boolean | undefined);
     case 'scroll':

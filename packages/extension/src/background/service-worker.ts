@@ -157,6 +157,14 @@ async function routeCommand(cmd: { action: string; params: Record<string, unknow
       return screenshot(p.tabId as number | undefined);
     case 'eval_js':
       return evalJs(await getPageTabId(p), String(p.expression));
+    case 'click':
+      if (p.trusted === true) return trustedClick(p);
+      // fall through: content-script .click()
+      return (await sendToPage(await getPageTabId(p), {
+        type: 'command',
+        action: cmd.action,
+        params: p,
+      })) as CommandResult;
     case 'scroll':
       return trustedScroll(await getPageTabId(p), String(p.direction), p.amount as number | undefined);
     default: {
@@ -330,6 +338,42 @@ async function evalJs(tabId: number, expression: string): Promise<unknown> {
   } finally {
     await chrome.debugger.detach(target).catch(() => {});
   }
+}
+
+/**
+ * Trusted click qua chrome.debugger Input (isTrusted=true) — các site
+ * anti-bot (Shopee variation, captcha-protected flows) bỏ qua .click()
+ * tổng hợp từ content script. Lấy toạ độ từ content script rồi dispatch.
+ */
+async function trustedClick(p: { ref?: unknown; tabId?: unknown }): Promise<unknown> {
+  const tabId = await getPageTabId(p as Record<string, unknown>);
+  const ref = String(p.ref);
+  const coords = (await sendToPage(tabId, {
+    type: 'command',
+    action: 'click_coords',
+    params: { ref },
+  })) as { x: number; y: number; tag?: string };
+  const target = { tabId };
+  await chrome.debugger.attach(target, '1.3');
+  try {
+    await chrome.debugger.sendCommand(target, 'Input.dispatchMouseEvent', {
+      type: 'mousePressed',
+      x: coords.x,
+      y: coords.y,
+      button: 'left',
+      clickCount: 1,
+    });
+    await chrome.debugger.sendCommand(target, 'Input.dispatchMouseEvent', {
+      type: 'mouseReleased',
+      x: coords.x,
+      y: coords.y,
+      button: 'left',
+      clickCount: 1,
+    });
+  } finally {
+    await chrome.debugger.detach(target).catch(() => {});
+  }
+  return { clicked: ref, trusted: true, tag: coords.tag };
 }
 
 /**

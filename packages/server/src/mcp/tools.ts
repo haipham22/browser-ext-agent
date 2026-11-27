@@ -77,10 +77,14 @@ export function registerTools(server: McpServer, ctx: ToolCtx): void {
 
   server.tool(
     'browser_click',
-    'Click an element by ref from the last snapshot. Returns action result + fresh snapshot.',
-    { ref: z.string(), tabId: z.number().int().optional() },
-    async ({ ref, tabId }) => {
-      const r = await ctx.send('click', { ref, tabId });
+    'Click an element by ref from the last snapshot. Returns action result + fresh snapshot. trusted=true dispatches a real (isTrusted) mouse click via chrome.debugger — use when the site ignores synthetic clicks (anti-bot variation pickers).',
+    {
+      ref: z.string(),
+      tabId: z.number().int().optional(),
+      trusted: z.boolean().optional(),
+    },
+    async ({ ref, tabId, trusted }) => {
+      const r = await ctx.send('click', { ref, tabId, trusted });
       return withSnapshot(ctx, { tabId }, r.result);
     },
   );

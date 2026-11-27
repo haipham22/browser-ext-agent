@@ -25663,10 +25663,14 @@ function registerTools(server, ctx) {
   );
   server.tool(
     "browser_click",
-    "Click an element by ref from the last snapshot. Returns action result + fresh snapshot.",
-    { ref: external_exports.string(), tabId: external_exports.number().int().optional() },
-    async ({ ref, tabId }) => {
-      const r = await ctx.send("click", { ref, tabId });
+    "Click an element by ref from the last snapshot. Returns action result + fresh snapshot. trusted=true dispatches a real (isTrusted) mouse click via chrome.debugger \u2014 use when the site ignores synthetic clicks (anti-bot variation pickers).",
+    {
+      ref: external_exports.string(),
+      tabId: external_exports.number().int().optional(),
+      trusted: external_exports.boolean().optional()
+    },
+    async ({ ref, tabId, trusted }) => {
+      const r = await ctx.send("click", { ref, tabId, trusted });
       return withSnapshot(ctx, { tabId }, r.result);
     }
   );

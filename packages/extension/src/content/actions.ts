@@ -56,6 +56,19 @@ export function clickByRef(ref: string): unknown {
   return { clicked: ref };
 }
 
+/** Viewport coords of the ref center — SW dispatches a TRUSTED debugger click there. */
+export function clickCoordsByRef(ref: string): unknown {
+  const el = getRef(ref);
+  if (!el) throw new Error('ELEMENT_NOT_FOUND: stale or unknown ref');
+  el.scrollIntoView({ block: 'center' });
+  const r = el.getBoundingClientRect();
+  return {
+    x: Math.round(r.left + r.width / 2),
+    y: Math.round(r.top + r.height / 2),
+    tag: el.tagName.toLowerCase(),
+  };
+}
+
 export function typeByRef(
   ref: string,
   text: string,
