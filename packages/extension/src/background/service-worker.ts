@@ -353,16 +353,23 @@ async function evalJs(tabId: number, expression: string): Promise<unknown> {
 async function trustedClick(p: { ref?: unknown; tabId?: unknown }): Promise<unknown> {
   const tabId = await getPageTabId(p as Record<string, unknown>);
   const ref = String(p.ref);
-  const reply = (await sendToPage(tabId, {
-    type: 'command',
-    action: 'click_coords',
-    params: { ref },
-  })) as CommandResult;
-  if (!reply.ok) throw new PageError(reply.error.code, reply.error.message);
-  const coords = reply.result as { x: number; y: number; tag?: string };
   const target = { tabId };
+  // attach FIRST: the debugging banner shifts the page — coords measured
+  // before attach would be stale by the time the click lands
   await chrome.debugger.attach(target, '1.3');
   try {
+    const reply = (await sendToPage(tabId, {
+      type: 'command',
+      action: 'click_coords',
+      params: { ref },
+    })) as CommandResult;
+    if (!reply.ok) throw new PageError(reply.error.code, reply.error.message);
+    const coords = reply.result as { x: number; y: number; tag?: string };
+    await chrome.debugger.sendCommand(target, 'Input.dispatchMouseEvent', {
+      type: 'mouseMoved',
+      x: coords.x,
+      y: coords.y,
+    });
     await chrome.debugger.sendCommand(target, 'Input.dispatchMouseEvent', {
       type: 'mousePressed',
       x: coords.x,
@@ -380,7 +387,7 @@ async function trustedClick(p: { ref?: unknown; tabId?: unknown }): Promise<unkn
   } finally {
     await chrome.debugger.detach(target).catch(() => {});
   }
-  return { clicked: ref, trusted: true, tag: coords.tag };
+  return { clicked: ref, trusted: true, tag: 'coords-post-attach' };
 }
 
 /**
