@@ -353,11 +353,13 @@ async function evalJs(tabId: number, expression: string): Promise<unknown> {
 async function trustedClick(p: { ref?: unknown; tabId?: unknown }): Promise<unknown> {
   const tabId = await getPageTabId(p as Record<string, unknown>);
   const ref = String(p.ref);
-  const coords = (await sendToPage(tabId, {
+  const reply = (await sendToPage(tabId, {
     type: 'command',
     action: 'click_coords',
     params: { ref },
-  })) as { x: number; y: number; tag?: string };
+  })) as CommandResult;
+  if (!reply.ok) throw new PageError(reply.error.code, reply.error.message);
+  const coords = reply.result as { x: number; y: number; tag?: string };
   const target = { tabId };
   await chrome.debugger.attach(target, '1.3');
   try {
