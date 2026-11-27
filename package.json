@@ -25,5 +25,9 @@
     "packages/server/bin",
     "packages/server/dist",
     "README.md"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/haipham22/browser-ext-agent.git"
+  }
 }
