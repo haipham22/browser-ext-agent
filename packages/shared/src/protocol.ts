@@ -10,6 +10,7 @@ export const COMMAND_ACTIONS = [
   'snapshot',
   'screenshot',
   'wait_for',
+  'eval_js',
   'tab_list',
   'tab_new',
   'tab_select',

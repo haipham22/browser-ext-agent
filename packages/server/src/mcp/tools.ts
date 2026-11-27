@@ -202,19 +202,24 @@ export function registerTools(server: McpServer, ctx: ToolCtx): void {
 
   server.tool(
     'browser_eval',
-    'Run a JS expression in a real tab via Chrome DevTools Protocol (Playwright bridge, D21). Identify the tab by a URL substring; requires Chrome started with --remote-debugging-port=9222. Use for DOM probes, computed data, or anything the snapshot outline cannot answer.',
+    'Run a JS expression in a real tab and get the value. Preferred path: chrome.debugger via the extension (tabId, no Chrome flags — a "debugging this tab" banner flashes). Fallback: Playwright CDP (urlPart + CDP_URL, needs --remote-debugging-port=9222). Use for DOM probes and anything the snapshot outline cannot answer.',
     {
-      urlPart: z.string(),
+      tabId: z.number().int().optional(),
       expression: z.string(),
+      urlPart: z.string().optional(),
     },
-    async ({ urlPart, expression }) => {
-      if (!ctx.cdpUrl) {
-        return {
-          content: [{ type: 'text', text: 'ERROR: CDP_URL not configured — set it or pass --cdp to the server' }],
-        };
+    async ({ tabId, expression, urlPart }) => {
+      try {
+        const r = await ctx.send('eval_js', { tabId, expression });
+        const res = r.result as { value?: string } | undefined;
+        return { content: [{ type: 'text', text: res?.value ?? 'undefined' }] };
+      } catch (e) {
+        if (urlPart && ctx.cdpUrl) {
+          const r = await cdpEval(ctx.cdpUrl, urlPart, expression);
+          return { content: [{ type: 'text', text: r.value }] };
+        }
+        throw e;
       }
-      const r = await cdpEval(ctx.cdpUrl, urlPart, expression);
-      return { content: [{ type: 'text', text: r.value }] };
     },
   );
 }

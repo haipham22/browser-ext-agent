@@ -155,6 +155,8 @@ async function routeCommand(cmd: { action: string; params: Record<string, unknow
     }
     case 'screenshot':
       return screenshot(p.tabId as number | undefined);
+    case 'eval_js':
+      return evalJs(await getPageTabId(p), String(p.expression));
     default: {
       // các action cấp-trang còn lại -> content script của tab đích
       // sendToPage trả CommandResult — unwrap trước khi bọc vào WS response
@@ -295,6 +297,36 @@ async function sendToPage(tabId: number, msg: PageCommand): Promise<unknown> {
       target: { tabId },
     });
     return chrome.tabs.sendMessage(tabId, msg);
+  }
+}
+
+/**
+ * Eval JS trong tab qua chrome.debugger (D22): không cần Chrome chạy với
+ * remote-debugging-port. Attach/detach mỗi lần — Chrome hiện banner debug.
+ */
+async function evalJs(tabId: number, expression: string): Promise<unknown> {
+  const tab = await chrome.tabs.get(tabId);
+  if (tab.url && isBlockedDomain(tab.url)) {
+    throw new PageError('DOMAIN_BLOCKED', tab.url);
+  }
+  const target = { tabId };
+  await chrome.debugger.attach(target, '1.3');
+  try {
+    const r = (await chrome.debugger.sendCommand(target, 'Runtime.evaluate', {
+      expression,
+      returnByValue: true,
+      awaitPromise: true,
+    })) as { result?: { value?: unknown }; exceptionDetails?: { exception?: { description?: string } } };
+    if (r.exceptionDetails) {
+      throw new PageError(
+        'EVAL_FAILED',
+        r.exceptionDetails.exception?.description ?? 'unknown JS error',
+      );
+    }
+    const v = r.result?.value;
+    return { value: typeof v === 'string' ? v : JSON.stringify(v) ?? 'undefined' };
+  } finally {
+    await chrome.debugger.detach(target).catch(() => {});
   }
 }
 
