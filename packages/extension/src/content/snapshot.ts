@@ -173,8 +173,9 @@ export function buildSnapshot(
       if (suppressText) return;
       const ownText = text || (el.children.length === 0 ? (el.textContent ?? '') : '');
       const t = redactText(oneLine(ownText), config.sensitivePatterns);
-      if (!t) return;
-      lines.push(`  ${'  '.repeat(depth)}- "${t.slice(0, MAX_TEXT)}"`);
+      // a textless span/p/li must still walk its children — containers like HN's
+      // span.titleline wrap the whole subtree (early return dropped all titles)
+      if (t) lines.push(`  ${'  '.repeat(depth)}- "${t.slice(0, MAX_TEXT)}"`);
     }
 
     for (const child of el.children) walk(child, depth + 1, suppressText);
