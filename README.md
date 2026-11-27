@@ -1,33 +1,85 @@
 # browser-ext-agent
 
-Agent (Claude Code / MCP client) điều khiển browser thật của bạn qua extension Chrome — chỉ khi bạn bật.
+Let your AI agent drive **your real browser** — via a Chrome extension, only while **you** have it enabled.
 
 ```
-agent ⇄ MCP (stdio) ⇄ server (Node) ⇄ WebSocket ⇄ extension (MV3) ⇄ trang web
+agent ⇄ MCP (stdio) ⇄ server (Node) ⇄ WebSocket ⇄ Chrome extension (MV3) ⇄ web page
 ```
 
-## Dùng thử (cục bộ)
+Built for debugging: your agent reads the page, clicks, types, scrolls, screenshots, and reads console logs — on the browser that already has your sessions, extensions and login state. No headless setup, no re-authentication.
+
+## Highlights
+
+- **Consent by default** — the extension connects *only* after you click **Enable** in its popup. Turn it off and every tool call fails immediately. The agent has no way to enable itself.
+- **Secret protection** — input values are never returned to the agent (`value=•••`), password/OTP/card fields are masked entirely, screenshots blur sensitive fields *before* capture, and token-like strings (`sk-…`, `Bearer …`, AWS keys, JWTs) are redacted from page text.
+- **Token-cheap observations** — the agent sees a compact text outline with stable element refs (`[ref=e12] button "Place order"`), not raw HTML. Screenshots on demand.
+- **Console capture** — `console.*` output and uncaught exceptions are buffered per tab and readable via a tool. Made for debugging apps in the page.
+- **One npm package** — MCP server + WebSocket server ship as a single `npx`-able binary; the extension installs unpacked.
+
+## Tools exposed to the agent
+
+| Tool | What it does |
+|---|---|
+| `browser_navigate` | Open a URL (returns title + url + snapshot) |
+| `browser_snapshot` | Text outline of interactive elements + text, each with a `ref` |
+| `browser_click` / `browser_type` | Act on an element by `ref`; typing supports `submit` |
+| `browser_scroll` / `browser_wait_for` | Scroll; wait for text or a selector |
+| `browser_screenshot` | PNG of the tab (sensitive fields pre-masked) |
+| `browser_tab_list` / `browser_tab_new` / `browser_tab_select` / `browser_tab_close` | Tab management |
+| `browser_console_logs` | Captured console logs / exceptions per tab |
+
+## Setup
+
+**1. Compile & run the server**
 
 ```bash
-pnpm install && pnpm test          # 16 tests
-cd packages/extension && node compile.mjs   # bundle extension → release/
-cd ../server && npx esbuild src/index.ts --bundle --platform=node --format=esm \
-  --outfile=release/index.js --external:ws --external:@modelcontextprotocol/sdk --external:zod
-node release/index.js              # MCP (stdio) + WS localhost:8765
+pnpm install
+pnpm build
+node packages/server/release/index.js     # MCP on stdio + WS on ws://localhost:8765
 ```
 
-1. Chrome → `chrome://extensions` → Developer mode → **Load unpacked** → `packages/extension/release/`
-2. Click icon extension → nhập URL server (mặc định đúng) → **Enable**
-3. `claude mcp add browser-ext-agent -- node /abs/path/packages/server/release/index.js`
-4. Trong session: `browser_navigate` → `browser_snapshot` → `browser_click` → `browser_console_logs`
+Options: `--port`, `--host` (bind non-localhost requires `--token`), or env `PORT` / `HOST` / `EXT_TOKEN` / `SECRET_CONFIG_PATH`.
 
-## Secret protection (D8)
+**2. Install the extension**
 
-- Snapshot không bao giờ trả value của input (chỉ `value=•••`).
-- Password/OTP/card + `blockedSelectors` → mask hẳn, chỉ hiện `[masked sensitive field]`.
-- Screenshot che sensitive trước khi chụp, xong bỏ che.
-- `SECRET_CONFIG_PATH` (JSON: `blockedDomains`, `blockedSelectors`, `sensitivePatterns` regex)
+Chrome → `chrome://extensions` → Developer mode → **Load unpacked** → `packages/extension/release/`
 
-## Docs
+**3. Connect**
 
-Kiến trúc/decision: `context/` (source of truth). Plan gốc: `~/.claude/plans/gi-t-mu-n-witty-fern.md`.
+Click the extension icon → server URL (default is already right for localhost) → token if the server requires one → **Enable**. The badge shows **ON** while connected.
+
+**4. Add the MCP server to your agent**
+
+```bash
+claude mcp add browser-ext-agent -- node /absolute/path/packages/server/release/index.js
+```
+
+Then try: `browser_navigate` → `browser_snapshot` → `browser_click` → `browser_console_logs`.
+
+## Security model
+
+Redaction happens **inside the content script** — the last layer before data leaves your browser. The server and agent never have a code path to the raw values.
+
+Known limits (stated plainly): if a page *displays* a secret as plain text (e.g. a token printed on a dashboard), it can appear in a snapshot — token-pattern redaction mitigates common formats. There are deliberately **no** tools for cookies, localStorage, network traffic or history. Tune the extra guards via `SECRET_CONFIG_PATH` (JSON with `blockedDomains`, `blockedSelectors`, `sensitivePatterns` regexes).
+
+## Architecture
+
+- [`packages/shared`](packages/shared) — zod protocol (commands/responses), central error codes, secret config, scenario schema (v2-ready)
+- [`packages/server`](packages/server) — WebSocket server + bridge + 12 MCP tools in one Node process
+- [`packages/extension`](packages/extension) — MV3 service worker (WS client, router), content script (snapshot refs, redact, actions, console capture), popup
+
+Design decisions and rationale: [`context/DECISIONS.md`](context/DECISIONS.md). Architecture doc: [`context/ARCHITECTURE.md`](context/ARCHITECTURE.md).
+
+## Development
+
+```bash
+pnpm test                                # 16 tests across the 3 packages
+pnpm --filter @haipham22/browser-ext-agent-extension exec tsc --noEmit   # typecheck
+cd packages/extension && node compile.mjs                                # rebuild extension bundle
+```
+
+Planned (v2): scenario runner — a scenario is just a JSON list of steps reusing the same command protocol (`scenarioSchema` is already in `shared`).
+
+## License
+
+[MIT](LICENSE)
