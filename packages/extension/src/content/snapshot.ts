@@ -119,13 +119,17 @@ export function buildSnapshot(
 
     const text = redactText(el.hasAttribute('aria-label')
       ? el.getAttribute('aria-label')!
-      : (el.childNodes.length && el.children.length === 0
-        ? (el.textContent ?? '')
-        : ''), config.sensitivePatterns);
+      : oneLine(Array.from(el.childNodes)
+          .filter((n) => n.nodeType === 3)
+          .map((n) => n.textContent ?? '')
+          .join(' ')), config.sensitivePatterns);
 
-    // element đã in tên -> con cháu chỉ text là trùng, bỏ qua (trừ interactive/structural)
+    // element đã in tên -> con cháu chỉ text là trùng; leaf thì bỏ sạch, còn
+    // container có con thì vẫn recurse (refs bên trong vẫn cần — nếu return
+    // sớm thì mất cả subtree, vd tinhte post body)
     if (suppressText && !isInteractive && !STRUCTURAL_TAGS.has(tag) &&
-        !TEXT_TAGS.has(tag) && tag !== 'p' && tag !== 'li' && tag !== 'span') {
+        !TEXT_TAGS.has(tag) && tag !== 'p' && tag !== 'li' && tag !== 'span' &&
+        el.children.length === 0) {
       return;
     }
 
@@ -176,6 +180,10 @@ export function buildSnapshot(
       // a textless span/p/li must still walk its children — containers like HN's
       // span.titleline wrap the whole subtree (early return dropped all titles)
       if (t) lines.push(`  ${'  '.repeat(depth)}- "${t.slice(0, MAX_TEXT)}"`);
+    } else if (text && !suppressText) {
+      // generic container (div, td, article...) with DIRECT text nodes — the
+      // walk never visits text nodes, so print here or the text is lost
+      lines.push(`  ${'  '.repeat(depth)}- "${oneLine(text.slice(0, MAX_TEXT))}"`);
     }
 
     for (const child of el.children) walk(child, depth + 1, suppressText);
