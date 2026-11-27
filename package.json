@@ -5,6 +5,9 @@
   "description": "Agent controls a real browser via MCP: agent -> MCP -> server -> extension -> page",
   "license": "MIT",
   "type": "module",
+  "bin": {
+    "browser-ext-agent": "packages/server/bin/mcp.js"
+  },
   "engines": {
     "node": ">=20"
   },

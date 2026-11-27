@@ -58,11 +58,17 @@ Click the **Browser Ext Agent** icon in the toolbar:
 
 ## 5. Register the MCP server with your agent
 
+Straight from GitHub (no clone needed — a self-contained bundle is committed at `packages/server/bin/mcp.js`):
+
+```bash
+claude mcp add browser-ext-agent -- npx -y github:haipham22/browser-ext-agent
+```
+
+Or from your local clone (useful while developing the server):
+
 ```bash
 claude mcp add browser-ext-agent -- node /absolute/path/to/browser-ext-agent/packages/server/release/index.js
 ```
-
-(Use the absolute path where you cloned. Restart your Claude Code session.)
 
 ## 6. Try it
 

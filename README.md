@@ -53,6 +53,10 @@ Click the extension icon → server URL (default is already right for localhost)
 **4. Add the MCP server to your agent**
 
 ```bash
+# straight from GitHub — no clone needed
+claude mcp add browser-ext-agent -- npx -y github:haipham22/browser-ext-agent
+
+# or from a local clone (while developing)
 claude mcp add browser-ext-agent -- node /absolute/path/packages/server/release/index.js
 ```
 
