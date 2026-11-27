@@ -157,6 +157,8 @@ async function routeCommand(cmd: { action: string; params: Record<string, unknow
       return screenshot(p.tabId as number | undefined);
     case 'eval_js':
       return evalJs(await getPageTabId(p), String(p.expression));
+    case 'scroll':
+      return trustedScroll(await getPageTabId(p), String(p.direction), p.amount as number | undefined);
     default: {
       // các action cấp-trang còn lại -> content script của tab đích
       // sendToPage trả CommandResult — unwrap trước khi bọc vào WS response
@@ -325,6 +327,46 @@ async function evalJs(tabId: number, expression: string): Promise<unknown> {
     }
     const v = r.result?.value;
     return { value: typeof v === 'string' ? v : JSON.stringify(v) ?? 'undefined' };
+  } finally {
+    await chrome.debugger.detach(target).catch(() => {});
+  }
+}
+
+/**
+ * Scroll bằng wheel event của chrome.debugger — trusted input (isTrusted
+ * true), khác scrollBy từ content script: các trang lazy-feed (Facebook)
+ * chỉ hydrate khi thấy input của người thật.
+ */
+async function trustedScroll(
+  tabId: number,
+  direction: string,
+  amount?: number,
+): Promise<unknown> {
+  const target = { tabId };
+  await chrome.debugger.attach(target, '1.3');
+  try {
+    const readY = () =>
+      chrome.debugger.sendCommand(target, 'Runtime.evaluate', {
+        expression: 'String(scrollY)',
+        returnByValue: true,
+      }) as Promise<{ result?: { value?: string } }>;
+    const before = Number(((await readY()).result?.value) ?? 0);
+    const dims = (await chrome.debugger.sendCommand(target, 'Runtime.evaluate', {
+      expression: 'JSON.stringify({w: innerWidth, h: innerHeight})',
+      returnByValue: true,
+    })) as { result?: { value?: string } };
+    const { w = 800, h = 600 } = JSON.parse(dims.result?.value ?? '{}');
+    const delta = (direction === 'up' ? -1 : 1) * (amount ?? 600);
+    await chrome.debugger.sendCommand(target, 'Input.dispatchMouseEvent', {
+      type: 'mouseWheel',
+      x: Math.round(w / 2),
+      y: Math.round(h / 2),
+      deltaX: 0,
+      deltaY: delta,
+    });
+    await new Promise((r) => setTimeout(r, 150));
+    const after = Number(((await readY()).result?.value) ?? 0);
+    return { scrollY: after, before };
   } finally {
     await chrome.debugger.detach(target).catch(() => {});
   }

@@ -31,10 +31,11 @@ const STRUCTURAL_TAGS = new Set([
   'section',
 ]);
 const MAX_TEXT = 80;
-// Modern sites nest deep — tinhte post body sits at depth 16, Facebook feed
-// posts at 40+ (utility-class wrapper divs). Only interactive/text-bearing
-// nodes print, so a deeper walk costs perf, not noise.
-const MAX_DEPTH = 50;
+// No depth cap: modern sites nest 40+ levels (tinhte 16, Facebook 40) and a
+// fixed cap silently drops content per-site. Guard total work instead —
+// only interactive/text-bearing nodes print, so depth itself costs no noise.
+const MAX_NODES = 20_000;
+let visited = 0;
 /** Số entry tối đa mỗi trang snapshot — agent lật bằng offset (pagination). */
 export const SNAPSHOT_PAGE_SIZE = 200;
 
@@ -107,9 +108,10 @@ export function buildSnapshot(
   nextOffset: number | null;
 } {
   const lines: string[] = [];
+  visited = 0;
 
   const walk = (el: Element, depth: number, suppressText = false): void => {
-    if (depth > MAX_DEPTH) return;
+    if (++visited > MAX_NODES) return;
     if (SKIP_TAGS.has(el.tagName.toLowerCase())) return;
     if (!isVisible(el)) return;
 
