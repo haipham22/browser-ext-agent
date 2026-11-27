@@ -58,7 +58,8 @@ async function connect(): Promise<void> {
     chrome.storage.session.set({ [STORAGE_KEYS.CONNECTED]: true });
     console.info('[bea] connected', url);
   };
-  ws.onclose = () => {
+  ws.onclose = (ev) => {
+    console.info('[bea] closed', ev.code, ev.reason, 'wasClean=', ev.wasClean);
     ws = null;
     setBadge(false);
     chrome.storage.session.set({ [STORAGE_KEYS.CONNECTED]: false });

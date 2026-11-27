@@ -20,6 +20,7 @@ export class WsServer {
   private pending = new Map<string, PendingEntry>();
   private wss: WebSocketServer;
   private currentConfig: SecretConfig | null = null;
+  private pingTimer: NodeJS.Timeout;
 
   constructor(
     port: number,
@@ -30,6 +31,12 @@ export class WsServer {
   ) {
     this.wss = new WebSocketServer({ host, port });
     this.wss.on('connection', (ws, req) => this.onConnection(ws, req));
+    // Chrome MV3 stops an SW whose WebSocket sees no activity; the protocol
+    // pong counts as activity and keeps the extension SW alive (D20)
+    this.pingTimer = setInterval(() => {
+      for (const c of this.wss.clients) if (c.readyState === 1) c.ping();
+    }, 25_000);
+    this.wss.on('close', () => clearInterval(this.pingTimer));
   }
 
   get isExtensionConnected(): boolean {

@@ -50,5 +50,5 @@ for _ in $(seq 1 20); do
   if ws_connected; then echo "OK: reloaded and connected to ws://localhost:$PORT"; exit 0; fi
   sleep 0.5
 done
-echo "FAIL: not connected after 10s — open the popup once and press Enable" >&2
+echo "FAIL: not connected after 10s — bootstrap once: open chrome-extension://<ext-id>/popup.html in a tab and click Enable" >&2
 exit 1
