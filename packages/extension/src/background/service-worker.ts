@@ -166,7 +166,12 @@ async function routeCommand(cmd: { action: string; params: Record<string, unknow
         params: p,
       })) as CommandResult;
     case 'scroll':
-      return trustedScroll(await getPageTabId(p), String(p.direction), p.amount as number | undefined);
+      return trustedScroll(
+        await getPageTabId(p),
+        String(p.direction),
+        p.amount as number | undefined,
+        p.method as string | undefined,
+      );
     default: {
       // các action cấp-trang còn lại -> content script của tab đích
       // sendToPage trả CommandResult — unwrap trước khi bọc vào WS response
@@ -385,6 +390,7 @@ async function trustedScroll(
   tabId: number,
   direction: string,
   amount?: number,
+  method?: string,
 ): Promise<unknown> {
   const target = { tabId };
   await chrome.debugger.attach(target, '1.3');
@@ -395,22 +401,45 @@ async function trustedScroll(
         returnByValue: true,
       }) as Promise<{ result?: { value?: string } }>;
     const before = Number(((await readY()).result?.value) ?? 0);
-    const dims = (await chrome.debugger.sendCommand(target, 'Runtime.evaluate', {
-      expression: 'JSON.stringify({w: innerWidth, h: innerHeight})',
-      returnByValue: true,
-    })) as { result?: { value?: string } };
-    const { w = 800, h = 600 } = JSON.parse(dims.result?.value ?? '{}');
-    const delta = (direction === 'up' ? -1 : 1) * (amount ?? 600);
-    await chrome.debugger.sendCommand(target, 'Input.dispatchMouseEvent', {
-      type: 'mouseWheel',
-      x: Math.round(w / 2),
-      y: Math.round(h / 2),
-      deltaX: 0,
-      deltaY: delta,
-    });
+    if (method === 'key') {
+      // PageDown/PageUp key events — some feeds respond to keys but not wheels
+      const key = direction === 'up' ? 'PageUp' : 'PageDown';
+      const vk = direction === 'up' ? 33 : 34;
+      const presses = Math.max(1, Math.round((amount ?? 600) / 600));
+      for (let i = 0; i < presses; i++) {
+        await chrome.debugger.sendCommand(target, 'Input.dispatchKeyEvent', {
+          type: 'rawKeyDown',
+          windowsVirtualKeyCode: vk,
+          nativeVirtualKeyCode: vk,
+          key,
+          code: key,
+        });
+        await chrome.debugger.sendCommand(target, 'Input.dispatchKeyEvent', {
+          type: 'keyUp',
+          windowsVirtualKeyCode: vk,
+          nativeVirtualKeyCode: vk,
+          key,
+          code: key,
+        });
+      }
+    } else {
+      const dims = (await chrome.debugger.sendCommand(target, 'Runtime.evaluate', {
+        expression: 'JSON.stringify({w: innerWidth, h: innerHeight})',
+        returnByValue: true,
+      })) as { result?: { value?: string } };
+      const { w = 800, h = 600 } = JSON.parse(dims.result?.value ?? '{}');
+      const delta = (direction === 'up' ? -1 : 1) * (amount ?? 600);
+      await chrome.debugger.sendCommand(target, 'Input.dispatchMouseEvent', {
+        type: 'mouseWheel',
+        x: Math.round(w / 2),
+        y: Math.round(h / 2),
+        deltaX: 0,
+        deltaY: delta,
+      });
+    }
     await new Promise((r) => setTimeout(r, 150));
     const after = Number(((await readY()).result?.value) ?? 0);
-    return { scrollY: after, before };
+    return { scrollY: after, before, method: method ?? 'wheel' };
   } finally {
     await chrome.debugger.detach(target).catch(() => {});
   }

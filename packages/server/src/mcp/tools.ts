@@ -106,14 +106,15 @@ export function registerTools(server: McpServer, ctx: ToolCtx): void {
 
   server.tool(
     'browser_scroll',
-    'Scroll the page up/down. Returns new scroll position.',
+    'Scroll the page up/down via a trusted (isTrusted) input event. method: "wheel" (mouse wheel, default) or "key" (PageDown/PageUp key events — try when a feed ignores wheels). Returns new scroll position.',
     {
       direction: z.enum(['up', 'down']),
       amount: z.number().int().optional(),
+      method: z.enum(['wheel', 'key']).optional(),
       tabId: z.number().int().optional(),
     },
-    async ({ direction, amount, tabId }) => {
-      const r = await ctx.send('scroll', { direction, amount, tabId });
+    async ({ direction, amount, method, tabId }) => {
+      const r = await ctx.send('scroll', { direction, amount, method, tabId });
       return { content: [{ type: 'text', text: JSON.stringify(r.result) }] };
     },
   );

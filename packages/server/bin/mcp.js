@@ -25690,14 +25690,15 @@ function registerTools(server, ctx) {
   );
   server.tool(
     "browser_scroll",
-    "Scroll the page up/down. Returns new scroll position.",
+    'Scroll the page up/down via a trusted (isTrusted) input event. method: "wheel" (mouse wheel, default) or "key" (PageDown/PageUp key events \u2014 try when a feed ignores wheels). Returns new scroll position.',
     {
       direction: external_exports.enum(["up", "down"]),
       amount: external_exports.number().int().optional(),
+      method: external_exports.enum(["wheel", "key"]).optional(),
       tabId: external_exports.number().int().optional()
     },
-    async ({ direction, amount, tabId }) => {
-      const r = await ctx.send("scroll", { direction, amount, tabId });
+    async ({ direction, amount, method, tabId }) => {
+      const r = await ctx.send("scroll", { direction, amount, method, tabId });
       return { content: [{ type: "text", text: JSON.stringify(r.result) }] };
     }
   );
