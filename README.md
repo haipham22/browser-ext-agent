@@ -75,7 +75,7 @@ Trusted input goes through `chrome.debugger`, so Chrome briefly shows its "being
 ## Architecture
 
 - [`packages/shared`](packages/shared) — zod protocol (commands/responses), central error codes, secret config, scenario schema
-- [`packages/server`](packages/server) — WebSocket server + bridge + 15 MCP tools in one Node process; optional Playwright-over-CDP bridge
+- [`packages/server`](packages/server) — WebSocket server + bridge + 14 MCP tools in one Node process; optional Playwright-over-CDP bridge
 - [`packages/extension`](packages/extension) — MV3 service worker (WS client, router, trusted input via `chrome.debugger`), content script (snapshot refs, redact, actions, console capture), popup
 
 Design decisions and rationale: [`context/DECISIONS.md`](context/DECISIONS.md). Architecture doc: [`context/ARCHITECTURE.md`](context/ARCHITECTURE.md).
