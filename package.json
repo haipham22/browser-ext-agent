@@ -17,6 +17,15 @@
     "dev:server": "pnpm --filter @haipham22/browser-ext-agent dev"
   },
   "dependencies": {
-    "playwright-core": "^1.65.1"
-  }
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "playwright-core": "^1.65.1",
+    "ws": "^8.18.0",
+    "zod": "^3.24.1"
+  },
+  "files": [
+    "packages/server/bin",
+    "packages/server/dist",
+    "packages/extension/release",
+    "README.md"
+  ]
 }
