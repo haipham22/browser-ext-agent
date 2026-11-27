@@ -124,12 +124,12 @@ export function buildSnapshot(
           .map((n) => n.textContent ?? '')
           .join(' ')), config.sensitivePatterns);
 
-    // element đã in tên -> con cháu chỉ text là trùng; leaf thì bỏ sạch, còn
-    // container có con thì vẫn recurse (refs bên trong vẫn cần — nếu return
-    // sớm thì mất cả subtree, vd tinhte post body)
+    // element đã in tên -> con cháu chỉ text có thể trùng, nhưng KHÔNG drop
+    // text: big clickable cards có name=textContent mà text con vẫn cần
+    // (tinhte post body mất nếu suppress); chỉ drop khi thật sự không có gì
     if (suppressText && !isInteractive && !STRUCTURAL_TAGS.has(tag) &&
         !TEXT_TAGS.has(tag) && tag !== 'p' && tag !== 'li' && tag !== 'span' &&
-        el.children.length === 0) {
+        el.children.length === 0 && !text) {
       return;
     }
 
@@ -173,14 +173,12 @@ export function buildSnapshot(
     } else if (TEXT_TAGS.has(tag) && text) {
       lines.push(`  ${'  '.repeat(depth)}- ${tag} "${oneLine(text.slice(0, MAX_TEXT))}"`);
     } else if (tag === 'p' || tag === 'li' || tag === 'span') {
-      // cha (interactive) đã in tên -> text con chắc chắn trùng
-      if (suppressText) return;
       const ownText = text || (el.children.length === 0 ? (el.textContent ?? '') : '');
       const t = redactText(oneLine(ownText), config.sensitivePatterns);
       // a textless span/p/li must still walk its children — containers like HN's
       // span.titleline wrap the whole subtree (early return dropped all titles)
       if (t) lines.push(`  ${'  '.repeat(depth)}- "${t.slice(0, MAX_TEXT)}"`);
-    } else if (text && !suppressText) {
+    } else if (text) {
       // generic container (div, td, article...) with DIRECT text nodes — the
       // walk never visits text nodes, so print here or the text is lost
       lines.push(`  ${'  '.repeat(depth)}- "${oneLine(text.slice(0, MAX_TEXT))}"`);
