@@ -31,8 +31,10 @@ const STRUCTURAL_TAGS = new Set([
   'section',
 ]);
 const MAX_TEXT = 80;
-// Next.js/styled-jsx sites nest deep (tinhte post body sits at depth 16+)
-const MAX_DEPTH = 30;
+// Modern sites nest deep — tinhte post body sits at depth 16, Facebook feed
+// posts at 40+ (utility-class wrapper divs). Only interactive/text-bearing
+// nodes print, so a deeper walk costs perf, not noise.
+const MAX_DEPTH = 50;
 /** Số entry tối đa mỗi trang snapshot — agent lật bằng offset (pagination). */
 export const SNAPSHOT_PAGE_SIZE = 200;
 
