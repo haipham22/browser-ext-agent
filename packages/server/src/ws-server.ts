@@ -31,6 +31,9 @@ export class WsServer {
     private onExtensionChange: (connected: boolean) => void = () => {},
   ) {
     this.wss = new WebSocketServer({ host, port });
+    // swallow bind errors (EADDRINUSE race during proxy promotion) —
+    // waitForListening surfaces them; an unhandled 'error' would crash the process
+    this.wss.on('error', () => {});
     this.wss.on('connection', (ws, req) => this.onConnection(ws, req));
     // Chrome MV3 stops an SW whose WebSocket sees no JS-visible activity;
     // protocol pings/pongs don't count, so send a real message the extension
