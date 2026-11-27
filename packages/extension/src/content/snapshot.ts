@@ -112,6 +112,8 @@ export function buildSnapshot(
 
   const walk = (el: Element, depth: number, suppressText = false): void => {
     if (++visited > MAX_NODES) return;
+    // live regions (role=status) are transient spinners/announcements — noise
+    if (el.getAttribute('role') === 'status') return;
     if (SKIP_TAGS.has(el.tagName.toLowerCase())) return;
     if (!isVisible(el)) return;
 
