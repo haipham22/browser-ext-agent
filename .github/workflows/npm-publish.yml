@@ -1,5 +1,7 @@
-# Release is version-driven: bump version in package.json, push main — this
-# workflow reads it, tags the release, and publishes if the tag is new.
+# Version-driven release: bump version in package.json, push main — the job
+# reads it, tags the release, tests, packages, and publishes if the tag is
+# new. (A reusable variant lives in haipham22/dsm-gitops release-npm.yml,
+# pending GitHub cross-repo access propagation.)
 name: release
 
 on:
@@ -10,11 +12,59 @@ on:
       - package.json
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   release:
-    uses: haipham22/dsm-gitops/.github/workflows/release-npm.yml@main
-    with:
-      build-command: pnpm -r build
-      test-command: pnpm -r test
-    secrets:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: version
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - id: tag
+        run: |
+          if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: pnpm/action-setup@v4
+        if: steps.tag.outputs.skip == 'false'
+        with:
+          version: '12'
+
+      - uses: actions/setup-node@v4
+        if: steps.tag.outputs.skip == 'false'
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org/
+
+      - name: Install
+        if: steps.tag.outputs.skip == 'false'
+        run: pnpm install --frozen-lockfile
+
+      - name: Test
+        if: steps.tag.outputs.skip == 'false'
+        run: pnpm -r test
+
+      - name: Package
+        if: steps.tag.outputs.skip == 'false'
+        run: pnpm -r build
+
+      - name: Publish
+        if: steps.tag.outputs.skip == 'false'
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Tag release
+        if: steps.tag.outputs.skip == 'false'
+        run: |
+          git tag "v${{ steps.version.outputs.version }}"
+          git push origin "v${{ steps.version.outputs.version }}"
