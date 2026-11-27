@@ -36,6 +36,15 @@ export class WsServer {
     return this.socket !== null && this.socket.readyState === 1;
   }
 
+  /** Resolves once the underlying server is listening — clients may connect. */
+  waitForListening(): Promise<void> {
+    if (this.wss.address()) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      this.wss.once('listening', resolve);
+      this.wss.once('error', reject);
+    });
+  }
+
   get secretConfig(): SecretConfig | null {
     return this.currentConfig;
   }

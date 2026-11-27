@@ -37,6 +37,8 @@ last_reviewed: "2026-11-27"
 | D14 | 2026-11-27 | Scenario (v2, D7-ref): 1 scenario = JSON list bước tái dùng đúng action protocol; schema `scenarioSchema` sẵn trong shared, runner đặt ở server | Chạy tay hay chạy kịch bản dùng chung 1 đường code; extension không đổi gì | v1 chỉ validate schema, chưa có runner | Yes |
 | D15 | 2026-11-27 | Repo GitHub **private** tại `haipham22/browser-ext-agent` | Tool cá nhân, an toàn mặc định | Lật public bất cứ lúc nào: `gh repo edit --visibility public` | Yes |
 | D16 | 2026-11-27 | Repo chuyển thành **public** theo yêu cầu project owner | Dùng chung / showcase | Không có secret trong repo (đã kiểm tra: chỉ `.env.example`, không `.env`) | Yes — lật private lại bất cứ lúc nào |
+| D17 | 2026-11-27 | Click/type xong chờ navigation settle (grace 2s, tổng 12s) trước khi trả kết quả; không điều hướng → trả sau grace | Snapshot kèm click/type từng trả trang cũ (dogfood 2026-11-27) — agent click xong đọc phải DOM cũ | SPA click thường tốn thêm grace 2s; fetch-then-redirect chậm hơn 2s vẫn miss | Yes — bỏ wait, trở lại hành vi cũ |
+| D18 | 2026-11-27 | Screenshot với tabId là background tab → lỗi `TAB_NOT_VISIBLE` thay vì chụp nhầm tab visible của window | captureVisibleTab chụp tab visible; chụp nhầm = ảnh sai + sensitive masking chạy nhầm tab | Agent phải `tab_select` trước khi chụp tab nền | Yes — bỏ guard, trả ảnh sai như cũ |
 
 <!-- The seed row above deliberately carries the date "(template)" so it does NOT count as a decision —
      a decision only counts when it has an ISO date logged by this project itself. -->

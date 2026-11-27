@@ -155,12 +155,16 @@ async function routeCommand(cmd: { action: string; params: Record<string, unknow
     default: {
       // các action cấp-trang còn lại -> content script của tab đích
       // sendToPage trả CommandResult — unwrap trước khi bọc vào WS response
-      const r = (await sendToPage(await getPageTabId(p), {
+      const tabId = await getPageTabId(p);
+      const r = (await sendToPage(tabId, {
         type: 'command',
         action: cmd.action,
         params: p,
       })) as CommandResult;
       if (!r.ok) throw new PageError(r.error.code, r.error.message);
+      // click/type may start a navigation -> wait for it so the attached
+      // snapshot never reads the old page (D17)
+      if (cmd.action === 'click' || cmd.action === 'type') await waitNavSettle(tabId);
       return r.result;
     }
   }
@@ -223,12 +227,50 @@ function waitTabComplete(id: number, timeoutMs: number): Promise<void> {
 }
 
 /**
- * Screenshot: nhờ content script che sensitive TRƯỚC khi chụp (D8),
- * captureVisibleTab, rồi bỏ che.
+ * Click/type may start a navigation -> wait for it to finish loading before
+ * returning, so the auto-attached snapshot never reads the OLD page (D17).
+ * No navigation within the 2s grace (plain SPA click) -> return immediately.
+ */
+async function waitNavSettle(tabId: number): Promise<void> {
+  const before = (await chrome.tabs.get(tabId)).url;
+  const deadline = Date.now() + 12_000;
+  let navStarted = false;
+  while (Date.now() < deadline) {
+    const tab = await chrome.tabs.get(tabId);
+    if (tab.status === 'loading' || (tab.url && tab.url !== before)) {
+      navStarted = true;
+      break;
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  if (!navStarted) return;
+  while (Date.now() < deadline) {
+    const tab = await chrome.tabs.get(tabId);
+    if (tab.status === 'complete') {
+      // brief pause for content-script re-injection + first paint
+      await new Promise((r) => setTimeout(r, 300));
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+}
+
+/**
+ * Screenshot: content script masks sensitive fields BEFORE the capture (D8),
+ * then captureVisibleTab, then unmask.
+ * captureVisibleTab always captures the VISIBLE tab of the window — a tabId
+ * that is not the active tab of its window would capture the WRONG tab (D18):
+ * fail with an error instead of returning a wrong image.
  */
 async function screenshot(tabId?: number): Promise<unknown> {
   const id = tabId ?? (await getActiveTabId());
   const tab = await chrome.tabs.get(id);
+  if (tabId != null && !tab.active) {
+    throw new PageError(
+      'TAB_NOT_VISIBLE',
+      `tab ${id} is not the active tab of its window — select it first (tab_select)`,
+    );
+  }
   await sendToPage(id, { type: 'command', action: 'prepare_screenshot', params: {} });
   try {
     const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {

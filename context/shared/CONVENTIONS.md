@@ -112,6 +112,8 @@ Rules observed in practice but not yet promoted. One line per rule:
 
 Promote into `## Forbidden patterns` once confirmed by real usage; delete if stale.
 
+`<!-- cand: 2026-11-27 --> Code comments in new/changed lines are English-only (project owner directive 2026-11-27); chat stays Vietnamese.`
+
 #### Forbidden patterns
 
 The `ek_context_conventions_guard` hook reads ONLY the fenced block below (one regex per line, `#` starts a comment) and blocks newly written lines that match a pattern. Edit this file to change the law — the hook re-reads it on every edit, no config needed.

@@ -114,7 +114,7 @@ export function registerTools(server: McpServer, ctx: ToolCtx): void {
 
   server.tool(
     'browser_screenshot',
-    'Screenshot the current tab (PNG, sensitive fields are masked). Returns an image.',
+    'Screenshot the current visible tab (PNG, sensitive fields are masked). Errors with TAB_NOT_VISIBLE if tabId is a background tab — select it first (tab_select). Returns an image.',
     { tabId: z.number().int().optional() },
     async ({ tabId }) => {
       const r = await ctx.send('screenshot', { tabId });
