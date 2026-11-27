@@ -48,6 +48,9 @@ function isVisible(el: Element): boolean {
   const s = getComputedStyle(el);
   if (s.display === 'none') return false;
   if (s.visibility !== 'visible') return false;
+  // display:contents elements have no box of their own (rect 0x0 by design)
+  // but their children render — Facebook wraps posts in these
+  if (s.display === 'contents') return true;
   const r = el.getBoundingClientRect();
   return r.width > 0 || r.height > 0;
 }
