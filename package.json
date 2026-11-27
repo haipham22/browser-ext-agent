@@ -1,6 +1,5 @@
 {
   "name": "browser-ext-agent",
-  "private": true,
   "version": "0.1.0",
   "description": "Agent controls a real browser via MCP: agent -> MCP -> server -> extension -> page",
   "license": "MIT",
