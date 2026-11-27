@@ -9,6 +9,9 @@ await build({
   platform: 'node',
   format: 'esm',
   outfile: 'bin/mcp.js',
+  // playwright-core cannot be bundled (CJS __dirname in ESM) — it ships in
+  // dependencies, so the bin still works after npm install
+  external: ['playwright-core'],
   banner: {
     js: [
       '#!/usr/bin/env node',

@@ -14,7 +14,7 @@
     ".": "./dist/index.js"
   },
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/index.js --external:ws --external:@modelcontextprotocol/sdk --external:zod && node make-bin.mjs && tsc --noEmit",
+    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/index.js --external:ws --external:@modelcontextprotocol/sdk --external:zod --external:playwright-core && node make-bin.mjs && tsc --noEmit",
     "dev": "node --watch-path=src --watch --experimental-strip-types src/index.ts",
     "test": "vitest run"
   },
