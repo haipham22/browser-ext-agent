@@ -17,6 +17,20 @@ const INTERACTIVE_TAGS = new Set([
 ]);
 const TEXT_TAGS = new Set(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']);
 const SKIP_TAGS = new Set(['script', 'style', 'noscript', 'svg', 'template', 'iframe']);
+// Container trung gian được in ra để agent thấy CÂY (nhóm nào chứa nút nào)
+const STRUCTURAL_TAGS = new Set([
+  'nav',
+  'header',
+  'footer',
+  'main',
+  'aside',
+  'form',
+  'table',
+  'ul',
+  'ol',
+  'details',
+  'section',
+]);
 const MAX_TEXT = 80;
 const MAX_DEPTH = 15;
 const MAX_LINES = 200;
@@ -98,6 +112,23 @@ export function buildSnapshot(config: {
         line += ` value=${maskInputValue(el.value)}`;
       }
       lines.push('  '.repeat(depth) + line);
+    } else if (STRUCTURAL_TAGS.has(tag)) {
+      // dòng nhóm: agent nhìn thấy phân cấp, form/table còn có ref để type/đọc
+      const name = accessibleName(el);
+      if (tag === 'form' || tag === 'table' || tag === 'details') {
+        const ref = registerRef(el);
+        lines.push(
+          '  '.repeat(depth) + `- [ref=${ref}] ${tag}${name ? ` "${redactText(name, config.sensitivePatterns).slice(0, MAX_TEXT)}"` : ''}`,
+        );
+      } else if (name || tag === 'nav' || tag === 'main' || tag === 'aside') {
+        lines.push(
+          '  '.repeat(depth) + `- ${tag}${name ? ` "${redactText(name, config.sensitivePatterns).slice(0, MAX_TEXT)}"` : ''}`,
+        );
+      } else {
+        // container vô danh (div-only layout) -> không in, đỡ nhiễu
+        for (const child of el.children) walk(child, depth);
+        return;
+      }
     } else if (TEXT_TAGS.has(tag) && text) {
       lines.push(`  ${'  '.repeat(depth)}- ${tag} "${text.slice(0, MAX_TEXT)}"`);
     } else if (tag === 'p' || tag === 'li' || tag === 'span') {
