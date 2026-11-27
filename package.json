@@ -20,7 +20,7 @@
     "@modelcontextprotocol/sdk": "^1.0.4",
     "playwright-core": "^1.65.1",
     "ws": "^8.18.0",
-    "zod": "^3.24.1"
+    "zod": "^4.6.6"
   },
   "files": [
     "packages/server/bin",
