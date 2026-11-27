@@ -39,6 +39,7 @@ last_reviewed: "2026-11-27"
 | D16 | 2026-11-27 | Repo chuyển thành **public** theo yêu cầu project owner | Dùng chung / showcase | Không có secret trong repo (đã kiểm tra: chỉ `.env.example`, không `.env`) | Yes — lật private lại bất cứ lúc nào |
 | D17 | 2026-11-27 | Click/type xong chờ navigation settle (grace 2s, tổng 12s) trước khi trả kết quả; không điều hướng → trả sau grace | Snapshot kèm click/type từng trả trang cũ (dogfood 2026-11-27) — agent click xong đọc phải DOM cũ | SPA click thường tốn thêm grace 2s; fetch-then-redirect chậm hơn 2s vẫn miss | Yes — bỏ wait, trở lại hành vi cũ |
 | D18 | 2026-11-27 | Screenshot với tabId là background tab → lỗi `TAB_NOT_VISIBLE` thay vì chụp nhầm tab visible của window | captureVisibleTab chụp tab visible; chụp nhầm = ảnh sai + sensitive masking chạy nhầm tab | Agent phải `tab_select` trước khi chụp tab nền | Yes — bỏ guard, trả ảnh sai như cũ |
+| D19 | 2026-11-27 | Flag Enabled chuyển `storage.session` → `storage.local` | Reload extension xoá session storage → SW không bao giờ tự nối lại, phải bật tay mỗi dev cycle (dogfood 2026-11-27) | Lựa chọn Enabled tồn tại qua cả browser restart; badge/toggle trong popup vẫn tắt được bất cứ lúc nào | Yes — lật về session storage |
 
 <!-- The seed row above deliberately carries the date "(template)" so it does NOT count as a decision —
      a decision only counts when it has an ISO date logged by this project itself. -->

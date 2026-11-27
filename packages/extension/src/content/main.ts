@@ -99,6 +99,10 @@ chrome.storage.session.onChanged.addListener((changes) => {
     const cfg = secretConfigSchema.safeParse(c.newValue);
     if (cfg.success) setConfig(cfg.data);
   }
+});
+
+// enabled flag lives in storage.local (survives extension reloads)
+chrome.storage.local.onChanged.addListener((changes) => {
   const en = changes[STORAGE_KEYS.ENABLED];
   if (en) {
     if (en.newValue === true) startCapture();
@@ -109,7 +113,7 @@ chrome.storage.session.onChanged.addListener((changes) => {
 // nếu extension đã bật trước khi trang load -> bắt đầu capture ngay
 void readSessionConfig().then((cfg) => {
   setConfig(cfg);
-  void chrome.storage.session.get(STORAGE_KEYS.ENABLED).then((o) => {
+  void chrome.storage.local.get(STORAGE_KEYS.ENABLED).then((o) => {
     if (o[STORAGE_KEYS.ENABLED] === true) startCapture();
   });
 });

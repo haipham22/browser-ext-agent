@@ -25,7 +25,9 @@ let secretConfig: SecretConfig | null = null;
 let backoffTimer: ReturnType<typeof setTimeout> | null = null;
 
 async function getEnabled(): Promise<boolean> {
-  const o = await chrome.storage.session.get(STORAGE_KEYS.ENABLED);
+  // storage.local: enabled choice survives extension reloads (session storage
+  // is wiped by a reload and the SW would never reconnect on its own)
+  const o = await chrome.storage.local.get(STORAGE_KEYS.ENABLED);
   return o[STORAGE_KEYS.ENABLED] === true;
 }
 

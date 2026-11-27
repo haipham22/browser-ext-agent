@@ -23,20 +23,23 @@ async function init(): Promise<void> {
   (el('server-url') as HTMLInputElement).value = local[STORAGE_KEYS.SERVER_URL] ?? 'ws://localhost:8765';
   (el('ext-token') as HTMLInputElement).value = local[STORAGE_KEYS.EXT_TOKEN] ?? '';
 
-  const sess = await chrome.storage.session.get([STORAGE_KEYS.ENABLED, STORAGE_KEYS.CONNECTED]);
-  render(sess[STORAGE_KEYS.ENABLED] === true, sess[STORAGE_KEYS.CONNECTED] === true);
+  const sess = await chrome.storage.session.get([STORAGE_KEYS.CONNECTED]);
+  const enabled = await chrome.storage.local.get(STORAGE_KEYS.ENABLED);
+  render(
+    enabled[STORAGE_KEYS.ENABLED] === true,
+    sess[STORAGE_KEYS.CONNECTED] === true,
+  );
 
   chrome.storage.session.onChanged.addListener(() => {
-    void chrome.storage.session
-      .get([STORAGE_KEYS.ENABLED, STORAGE_KEYS.CONNECTED])
-      .then((o) =>
-        render(o[STORAGE_KEYS.ENABLED] === true, o[STORAGE_KEYS.CONNECTED] === true),
-      );
+    void Promise.all([
+      chrome.storage.session.get(STORAGE_KEYS.CONNECTED),
+      chrome.storage.local.get(STORAGE_KEYS.ENABLED),
+    ]).then(([s, l]) => render(l[STORAGE_KEYS.ENABLED] === true, s[STORAGE_KEYS.CONNECTED] === true));
   });
 
   (el('enabled') as HTMLInputElement).addEventListener('change', (ev) => {
     const checked = (ev.target as HTMLInputElement).checked;
-    void chrome.storage.session.set({ [STORAGE_KEYS.ENABLED]: checked });
+    void chrome.storage.local.set({ [STORAGE_KEYS.ENABLED]: checked });
   });
 
   const save = async () => {
@@ -52,12 +55,12 @@ async function init(): Promise<void> {
   // 2 nút = 2 gesture tường minh; checkbox là hiển thị trạng thái
   el('toggle-on').addEventListener('click', async () => {
     await save();
-    await chrome.storage.session.set({ [STORAGE_KEYS.ENABLED]: true });
+    await chrome.storage.local.set({ [STORAGE_KEYS.ENABLED]: true });
     await chrome.runtime.sendMessage({ type: 'popup_enabled_changed' });
     render(true, false);
   });
   el('toggle-off').addEventListener('click', async () => {
-    await chrome.storage.session.set({ [STORAGE_KEYS.ENABLED]: false });
+    await chrome.storage.local.set({ [STORAGE_KEYS.ENABLED]: false });
     await chrome.runtime.sendMessage({ type: 'popup_enabled_changed' });
     render(false, false);
   });
