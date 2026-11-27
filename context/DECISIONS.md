@@ -36,6 +36,7 @@ last_reviewed: "2026-11-27"
 | D13 | 2026-11-27 | WS bind mặc định localhost:8765; `--port/--host` + env; extension cấu hình URL + token trong popup | Browser và npx thường cùng máy; tách máy thì host 0.0.0.0 + EXT_TOKEN bắt buộc | Token check ở server, extension gửi qua query param | Yes |
 | D14 | 2026-11-27 | Scenario (v2, D7-ref): 1 scenario = JSON list bước tái dùng đúng action protocol; schema `scenarioSchema` sẵn trong shared, runner đặt ở server | Chạy tay hay chạy kịch bản dùng chung 1 đường code; extension không đổi gì | v1 chỉ validate schema, chưa có runner | Yes |
 | D15 | 2026-11-27 | Repo GitHub **private** tại `haipham22/browser-ext-agent` | Tool cá nhân, an toàn mặc định | Lật public bất cứ lúc nào: `gh repo edit --visibility public` | Yes |
+| D16 | 2026-11-27 | Repo chuyển thành **public** theo yêu cầu project owner | Dùng chung / showcase | Không có secret trong repo (đã kiểm tra: chỉ `.env.example`, không `.env`) | Yes — lật private lại bất cứ lúc nào |
 
 <!-- The seed row above deliberately carries the date "(template)" so it does NOT count as a decision —
      a decision only counts when it has an ISO date logged by this project itself. -->
