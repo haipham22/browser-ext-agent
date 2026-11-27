@@ -18,6 +18,7 @@ export interface PendingEntry {
 export class WsServer {
   private socket: WebSocket | null = null;
   private pending = new Map<string, PendingEntry>();
+  private peers = new Set<WebSocket>();
   private wss: WebSocketServer;
   private currentConfig: SecretConfig | null = null;
   private pingTimer: NodeJS.Timeout;
@@ -112,6 +113,37 @@ export class WsServer {
         ws.close(4001, 'EXT_TOKEN mismatch');
         return;
       }
+    }
+    // Peer connections (MCP servers in proxy mode) forward commands to the
+    // extension socket — they never take the extension slot.
+    if ((req.url ?? '').includes('role=peer')) {
+      ws.on('message', (data) => {
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(String(data));
+        } catch {
+          return;
+        }
+        const r = commandSchema.safeParse(parsed);
+        if (!r.success) return;
+        this.dispatch(
+          r.data,
+          (result) => {
+            if (ws.readyState === 1) {
+              ws.send(JSON.stringify({ id: r.data.id, ok: true, result }));
+            }
+          },
+          (err) => {
+            if (ws.readyState === 1) {
+              const code = err.message.split(':')[0] ?? 'COMMAND_TIMEOUT';
+              ws.send(JSON.stringify({ id: r.data.id, ok: false, error: { code, message: err.message } }));
+            }
+          },
+        );
+      });
+      ws.on('close', () => this.peers.delete(ws));
+      this.peers.add(ws);
+      return;
     }
     // Connection mới thắng connection cũ (reload extension...).
     if (this.socket && this.socket !== ws) {

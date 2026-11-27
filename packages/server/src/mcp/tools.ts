@@ -3,15 +3,13 @@ import { z } from 'zod';
 
 import { ExtAgentError, scenarioStepSchema } from '@haipham22/browser-ext-agent-shared';
 import { cdpEval } from '../cdp.js';
-import type { WsServer } from '../ws-server.js';
 
-type SendCommand = (
+export type SendCommand = (
   action: Parameters<ReturnType<typeof import('../bridge.js').makeSendCommand>>[0],
   params?: Record<string, unknown>,
 ) => Promise<{ result?: unknown }>;
 
 export interface ToolCtx {
-  ws: WsServer;
   send: SendCommand;
   cdpUrl?: string;
 }
