@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
-import { ExtAgentError } from '@haipham22/browser-ext-agent-shared';
+import { ExtAgentError, scenarioStepSchema } from '@haipham22/browser-ext-agent-shared';
 import { cdpEval } from '../cdp.js';
 import type { WsServer } from '../ws-server.js';
 
@@ -202,6 +202,55 @@ export function registerTools(server: McpServer, ctx: ToolCtx): void {
     async ({ tabId, level, since }) => {
       const r = await ctx.send('console_logs', { tabId, level, since });
       return { content: [{ type: 'text', text: JSON.stringify(r.result, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    'browser_scenario',
+    'Run a MULTI-STEP browser flow server-side and return ONLY the extracted data — saves context vs one snapshot per step. steps: [{action, params}] using the same actions as the individual tools (navigate/click/type/eval_js/scroll/wait_for/...; snapshot steps return only total entry count, not the outline). extract: optional JS expression evaluated in the active tab at the end (its value is the main payload). stopOnError default true.',
+    {
+      steps: z.array(scenarioStepSchema).min(1),
+      extract: z.string().optional(),
+      tabId: z.number().int().optional(),
+      stopOnError: z.boolean().optional(),
+    },
+    async ({ steps, extract, tabId, stopOnError }) => {
+      const results: Array<{ action: string; ok: boolean; summary: string }> = [];
+      for (const s of steps) {
+        try {
+          const r = await ctx.send(s.action, { ...s.params, tabId });
+          const res = r.result as Record<string, unknown> | undefined;
+          let summary = '';
+          if (s.action === 'snapshot') {
+            summary = `total=${res?.total ?? '?'}`;
+          } else {
+            summary = JSON.stringify(res ?? {}).slice(0, 200);
+          }
+          results.push({ action: s.action, ok: true, summary });
+        } catch (e) {
+          results.push({
+            action: s.action,
+            ok: false,
+            summary: e instanceof Error ? e.message : String(e),
+          });
+          if (stopOnError !== false) {
+            break;
+          }
+        }
+      }
+      let extracted: string | null = null;
+      if (extract) {
+        try {
+          const r = await ctx.send('eval_js', { expression: extract, tabId });
+          const res = r.result as { value?: string } | undefined;
+          extracted = res?.value ?? null;
+        } catch (e) {
+          extracted = `EXTRACT_FAILED: ${e instanceof Error ? e.message : String(e)}`;
+        }
+      }
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ results, extracted }, null, 1) }],
+      };
     },
   );
 
