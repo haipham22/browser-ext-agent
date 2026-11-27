@@ -15,5 +15,8 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "dev:server": "pnpm --filter @haipham22/browser-ext-agent dev"
+  },
+  "dependencies": {
+    "playwright-core": "^1.65.1"
   }
 }
