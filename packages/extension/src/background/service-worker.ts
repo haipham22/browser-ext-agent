@@ -152,9 +152,17 @@ async function routeCommand(cmd: { action: string; params: Record<string, unknow
     }
     case 'screenshot':
       return screenshot(p.tabId as number | undefined);
-    default:
+    default: {
       // các action cấp-trang còn lại -> content script của tab đích
-      return sendToPage(await getPageTabId(p), { type: 'command', action: cmd.action, params: p });
+      // sendToPage trả CommandResult — unwrap trước khi bọc vào WS response
+      const r = (await sendToPage(await getPageTabId(p), {
+        type: 'command',
+        action: cmd.action,
+        params: p,
+      })) as CommandResult;
+      if (!r.ok) throw new PageError(r.error.code, r.error.message);
+      return r.result;
+    }
   }
 }
 

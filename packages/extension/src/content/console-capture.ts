@@ -1,4 +1,10 @@
-/** Ring buffer console + exception (D10). Bắt đầu capture chỉ khi đã bật. */
+/**
+ * Ring buffer console + exception (D10), isolated world.
+ * Log của TRANG: console-main.ts (main world — console của trang chỉ patch
+ * được từ đó, verified E2E) đẩy qua dataset + plain Event 'bea-log'
+ * (CustomEvent.detail bị Chrome strip qua world boundary).
+ * wrap() phía dưới bắt log của chính extension trong trang.
+ */
 export interface LogEntry {
   ts: number;
   level: 'log' | 'info' | 'warn' | 'error';
@@ -41,6 +47,21 @@ export function startCapture(): void {
   wrap('info');
   wrap('warn');
   wrap('error');
+
+  // log của TRANG đến từ console-main.ts (main world) qua dataset + plain Event
+  document.addEventListener('bea-log', () => {
+    const raw = document.documentElement.dataset.beaLog;
+    if (!raw) return;
+    try {
+      const d = JSON.parse(raw) as LogEntry;
+      if (d?.ts && d?.level) {
+        buffer.push(d);
+        if (buffer.length > MAX_ENTRIES) buffer.shift();
+      }
+    } catch {
+      // frame lỗi -> bỏ qua
+    }
+  }, true);
 
   window.addEventListener('error', (ev) => {
     pushEntry('error', [`${ev.message} (${ev.filename}:${ev.lineno})`]);

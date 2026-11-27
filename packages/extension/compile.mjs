@@ -19,6 +19,7 @@ const common = {
 const entries = [
   { in: 'src/background/service-worker.ts', out: 'service-worker' },
   { in: 'src/content/main.ts', out: 'content' },
+  { in: 'src/content/console-main.ts', out: 'console-main' },
   { in: 'popup/popup.ts', out: 'popup' },
 ];
 

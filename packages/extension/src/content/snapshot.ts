@@ -12,7 +12,6 @@ const INTERACTIVE_TAGS = new Set([
   'input',
   'select',
   'textarea',
-  'label',
   'summary',
 ]);
 const TEXT_TAGS = new Set(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']);
@@ -49,22 +48,46 @@ function isVisible(el: Element): boolean {
 }
 
 function accessibleName(el: Element): string {
+  const oneLine = (s: string): string => s.replace(/\s+/g, ' ').trim();
   const aria = el.getAttribute('aria-label');
-  if (aria) return aria.trim();
+  if (aria) return oneLine(aria);
   const labelledby = el.getAttribute('aria-labelledby');
   if (labelledby) {
     const ref = document.getElementById(labelledby);
-    if (ref?.textContent) return ref.textContent.trim();
+    if (ref?.textContent) return oneLine(ref.textContent).slice(0, MAX_TEXT);
   }
   if (el instanceof HTMLInputElement) {
     const id = el.id;
     if (id) {
       const label = document.querySelector(`label[for="${CSS.escape(id)}"]`);
-      if (label?.textContent) return label.textContent.trim();
+      if (label?.textContent) return oneLine(label.textContent).slice(0, MAX_TEXT);
     }
-    return (el.placeholder ?? '').trim();
+    return oneLine(el.placeholder ?? '');
   }
-  return (el.textContent ?? '').trim().slice(0, MAX_TEXT);
+  return oneLine(el.textContent ?? '').slice(0, MAX_TEXT);
+}
+
+/** Gọn mọi whitespace thô (HTML minified) về 1 dòng — 1 entry = 1 dòng thật. */
+function oneLine(s: string): string {
+  return s.replace(/\s+/g, ' ').trim();
+}
+
+/** Role theo ARIA — agent đọc `textbox`/`link` hiểu ngay, không đoán tag. */
+function ariaRole(el: Element): string {
+  const explicit = el.getAttribute('role');
+  if (explicit) return explicit;
+  const tag = el.tagName.toLowerCase();
+  if (el instanceof HTMLInputElement) {
+    const t = (el.getAttribute('type') ?? 'text').toLowerCase();
+    if (t === 'checkbox') return 'checkbox';
+    if (t === 'radio') return 'radio';
+    if (t === 'button' || t === 'submit') return 'button';
+    return 'textbox';
+  }
+  if (el instanceof HTMLTextAreaElement) return 'textbox';
+  if (el instanceof HTMLSelectElement) return 'combobox';
+  if (tag === 'a') return 'link';
+  return tag;
 }
 
 export function buildSnapshot(config: {
@@ -74,7 +97,7 @@ export function buildSnapshot(config: {
   const lines: string[] = [];
   let truncated = false;
 
-  const walk = (el: Element, depth: number): void => {
+  const walk = (el: Element, depth: number, suppressText = false): void => {
     if (truncated || depth > MAX_DEPTH) return;
     if (SKIP_TAGS.has(el.tagName.toLowerCase())) return;
     if (!isVisible(el)) return;
@@ -92,16 +115,24 @@ export function buildSnapshot(config: {
         ? (el.textContent ?? '')
         : ''), config.sensitivePatterns);
 
+    // element đã in tên -> con cháu chỉ text là trùng, bỏ qua (trừ interactive/structural)
+    if (suppressText && !isInteractive && !STRUCTURAL_TAGS.has(tag) &&
+        !TEXT_TAGS.has(tag) && tag !== 'p' && tag !== 'li' && tag !== 'span') {
+      return;
+    }
+
     if (isInteractive) {
       const ref = registerRef(el);
-      const role = el.getAttribute('role') ?? tag;
+      const role = ariaRole(el);
       let line = `- [ref=${ref}] ${role}`;
       const name = accessibleName(el);
       if (name) line += ` "${redactText(name, config.sensitivePatterns).slice(0, MAX_TEXT)}"`;
+      let masked = false;
       if (el instanceof HTMLInputElement) {
         const sensitive = isSensitiveInput(el) ||
           matchesBlockedSelector(el, config.blockedSelectors);
         if (sensitive) {
+          masked = true;
           line = `- [ref=${ref}] [masked sensitive field] (${tag})`;
         } else {
           if (el.value) line += ` value=${maskInputValue(el.value)}`;
@@ -112,33 +143,33 @@ export function buildSnapshot(config: {
         line += ` value=${maskInputValue(el.value)}`;
       }
       lines.push('  '.repeat(depth) + line);
+      for (const child of el.children) walk(child, depth + 1, !masked && !!name);
+      return;
     } else if (STRUCTURAL_TAGS.has(tag)) {
-      // dòng nhóm: agent nhìn thấy phân cấp, form/table còn có ref để type/đọc
-      const name = accessibleName(el);
+      // dòng nhóm: agent nhìn thấy phân cấp, form/table còn có ref để type/đọc.
+      // Tên structural CHỈ lấy aria-label — textContent của nav/ul là toàn bộ
+      // nội dung nhóm, in ra là nhiễu.
+      const shallow = oneLine(el.getAttribute('aria-label') ?? '');
       if (tag === 'form' || tag === 'table' || tag === 'details') {
         const ref = registerRef(el);
         lines.push(
-          '  '.repeat(depth) + `- [ref=${ref}] ${tag}${name ? ` "${redactText(name, config.sensitivePatterns).slice(0, MAX_TEXT)}"` : ''}`,
-        );
-      } else if (name || tag === 'nav' || tag === 'main' || tag === 'aside') {
-        lines.push(
-          '  '.repeat(depth) + `- ${tag}${name ? ` "${redactText(name, config.sensitivePatterns).slice(0, MAX_TEXT)}"` : ''}`,
+          '  '.repeat(depth) + `- [ref=${ref}] ${tag}${shallow ? ` "${shallow.slice(0, MAX_TEXT)}"` : ''}`,
         );
       } else {
-        // container vô danh (div-only layout) -> không in, đỡ nhiễu
-        for (const child of el.children) walk(child, depth);
-        return;
+        lines.push('  '.repeat(depth) + `- ${tag}${shallow ? ` "${shallow.slice(0, MAX_TEXT)}"` : ''}`);
       }
     } else if (TEXT_TAGS.has(tag) && text) {
-      lines.push(`  ${'  '.repeat(depth)}- ${tag} "${text.slice(0, MAX_TEXT)}"`);
+      lines.push(`  ${'  '.repeat(depth)}- ${tag} "${oneLine(text.slice(0, MAX_TEXT))}"`);
     } else if (tag === 'p' || tag === 'li' || tag === 'span') {
+      // cha (interactive) đã in tên -> text con chắc chắn trùng
+      if (suppressText) return;
       const ownText = text || (el.children.length === 0 ? (el.textContent ?? '') : '');
-      const t = redactText(ownText.trim(), config.sensitivePatterns);
+      const t = redactText(oneLine(ownText), config.sensitivePatterns);
       if (!t) return;
       lines.push(`  ${'  '.repeat(depth)}- "${t.slice(0, MAX_TEXT)}"`);
     }
 
-    for (const child of el.children) walk(child, depth + 1);
+    for (const child of el.children) walk(child, depth + 1, suppressText);
   };
 
   walk(document.body, 0);
