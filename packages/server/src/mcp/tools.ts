@@ -16,6 +16,19 @@ export interface ToolCtx {
 
 type TextContent = { type: 'text'; text: string };
 
+interface SnapshotResult {
+  outline?: string;
+  total?: number;
+  nextOffset?: number | null;
+}
+
+/** Footer pagination — agent tự biết gọi trang kế bằng offset nào. */
+function snapshotFooter(s: SnapshotResult): string {
+  if (!s.total || !s.nextOffset) return '';
+  const shown = s.nextOffset;
+  return `\n\n(page 1-${shown} of ${s.total} entries — next page: browser_snapshot {offset: ${shown}})`;
+}
+
 /** Sau navigate/click/type tự kèm snapshot (D11) — agent có vòng lặp nhìn->hành động. */
 async function withSnapshot(
   ctx: ToolCtx,
@@ -30,8 +43,10 @@ async function withSnapshot(
   }
   const lines: string[] = [];
   lines.push(typeof result === 'string' ? result : JSON.stringify(result));
-  const text = snap?.result as { outline?: string } | undefined;
-  if (text?.outline) lines.push('\n--- snapshot ---\n' + text.outline);
+  const text = snap?.result as SnapshotResult | undefined;
+  if (text?.outline) {
+    lines.push('\n--- snapshot ---\n' + text.outline + snapshotFooter(text));
+  }
   return { content: [{ type: 'text', text: lines.join('\n') }] };
 }
 
@@ -48,12 +63,13 @@ export function registerTools(server: McpServer, ctx: ToolCtx): void {
 
   server.tool(
     'browser_snapshot',
-    'Get a text outline of the page: interactive elements + meaningful text, each with a ref like [ref=e12]. Use refs for click/type.',
-    { tabId: z.number().int().optional() },
-    async ({ tabId }) => {
-      const r = await ctx.send('snapshot', { tabId });
-      const outline = (r.result as { outline?: string })?.outline ?? '(empty page)';
-      return { content: [{ type: 'text', text: outline }] };
+    'Text outline of the page: interactive elements + meaningful text, each with a ref like [ref=e12]. Use refs for click/type. Long pages are paginated — pass offset from the footer to get the next page.',
+    { tabId: z.number().int().optional(), offset: z.number().int().min(0).optional() },
+    async ({ tabId, offset }) => {
+      const r = await ctx.send('snapshot', { tabId, offset });
+      const s = (r.result ?? {}) as SnapshotResult;
+      const outline = s.outline ?? '(empty page)';
+      return { content: [{ type: 'text', text: outline + snapshotFooter(s) }] };
     },
   );
 

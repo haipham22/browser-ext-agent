@@ -39,7 +39,11 @@ function handleAction(action: string, p: Record<string, unknown>): unknown {
   const blocked = config.blockedSelectors;
   switch (action) {
     case 'snapshot':
-      return buildSnapshot({ sensitivePatterns: patterns, blockedSelectors: blocked });
+      return buildSnapshot(
+        { sensitivePatterns: patterns, blockedSelectors: blocked },
+        (p.offset as number | undefined) ?? 0,
+        p.limit as number | undefined,
+      );
     case 'click':
       return clickByRef(String(p.ref));
     case 'type':

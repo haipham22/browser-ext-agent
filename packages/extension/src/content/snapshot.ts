@@ -32,7 +32,8 @@ const STRUCTURAL_TAGS = new Set([
 ]);
 const MAX_TEXT = 80;
 const MAX_DEPTH = 15;
-const MAX_LINES = 200;
+/** Số entry tối đa mỗi trang snapshot — agent lật bằng offset (pagination). */
+export const SNAPSHOT_PAGE_SIZE = 200;
 
 export interface SnapshotLine {
   depth: number;
@@ -90,15 +91,22 @@ function ariaRole(el: Element): string {
   return tag;
 }
 
-export function buildSnapshot(config: {
-  sensitivePatterns: RegExp[];
-  blockedSelectors: string[];
-}): { outline: string; truncated: boolean } {
+export function buildSnapshot(
+  config: {
+    sensitivePatterns: RegExp[];
+    blockedSelectors: string[];
+  },
+  offset = 0,
+  limit = SNAPSHOT_PAGE_SIZE,
+): {
+  outline: string;
+  total: number;
+  nextOffset: number | null;
+} {
   const lines: string[] = [];
-  let truncated = false;
 
   const walk = (el: Element, depth: number, suppressText = false): void => {
-    if (truncated || depth > MAX_DEPTH) return;
+    if (depth > MAX_DEPTH) return;
     if (SKIP_TAGS.has(el.tagName.toLowerCase())) return;
     if (!isVisible(el)) return;
 
@@ -173,10 +181,10 @@ export function buildSnapshot(config: {
   };
 
   walk(document.body, 0);
-  if (lines.length >= MAX_LINES) {
-    lines.length = MAX_LINES;
-    truncated = true;
-    lines.push('(snapshot truncated — scroll and snapshot again for more)');
-  }
-  return { outline: lines.join('\n'), truncated };
+  // pagination theo offset: walk đủ DOM rồi mới cắt — refs ổn định,
+  // agent lấy trang kế tiếp bằng offset (không phụ thuộc scroll position)
+  const total = lines.length;
+  const page = lines.slice(offset, offset + limit);
+  const nextOffset = offset + limit < total ? offset + limit : null;
+  return { outline: page.join('\n'), total, nextOffset };
 }
