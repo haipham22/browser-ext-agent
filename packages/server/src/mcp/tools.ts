@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import { ExtAgentError } from '@haipham22/browser-ext-agent-shared';
+import { cdpEval } from '../cdp.js';
 import type { WsServer } from '../ws-server.js';
 
 type SendCommand = (
@@ -12,6 +13,7 @@ type SendCommand = (
 export interface ToolCtx {
   ws: WsServer;
   send: SendCommand;
+  cdpUrl?: string;
 }
 
 type TextContent = { type: 'text'; text: string };
@@ -195,6 +197,24 @@ export function registerTools(server: McpServer, ctx: ToolCtx): void {
     async ({ tabId, level, since }) => {
       const r = await ctx.send('console_logs', { tabId, level, since });
       return { content: [{ type: 'text', text: JSON.stringify(r.result, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    'browser_eval',
+    'Run a JS expression in a real tab via Chrome DevTools Protocol (Playwright bridge, D21). Identify the tab by a URL substring; requires Chrome started with --remote-debugging-port=9222. Use for DOM probes, computed data, or anything the snapshot outline cannot answer.',
+    {
+      urlPart: z.string(),
+      expression: z.string(),
+    },
+    async ({ urlPart, expression }) => {
+      if (!ctx.cdpUrl) {
+        return {
+          content: [{ type: 'text', text: 'ERROR: CDP_URL not configured — set it or pass --cdp to the server' }],
+        };
+      }
+      const r = await cdpEval(ctx.cdpUrl, urlPart, expression);
+      return { content: [{ type: 'text', text: r.value }] };
     },
   );
 }

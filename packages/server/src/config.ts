@@ -6,6 +6,7 @@ export interface ServerConfig {
   port: number;
   host: string;
   extToken?: string;
+  cdpUrl?: string;
 }
 
 /**
@@ -19,24 +20,26 @@ export function loadConfig(argv: string[] = process.argv): ServerConfig {
       port: { type: 'string', short: 'p' },
       host: { type: 'string', short: 'H' },
       token: { type: 'string', short: 't' },
+      cdp: { type: 'string' },
       help: { type: 'boolean' },
     },
     allowPositionals: false,
   });
 
   const port = Number(values.port ?? process.env.PORT ?? 8765);
-  const host = values.host ?? process.env.HOST ?? 'localhost';
+  const lazyHost = values.host ?? process.env.HOST ?? 'localhost';
   const extToken = values.token ?? process.env.EXT_TOKEN;
+  const cdpUrl = values.cdp ?? process.env.CDP_URL;
 
   if (!Number.isInteger(port) || port <= 0) {
     throw new ExtAgentError('INVALID_PARAMS', `bad port: ${port}`);
   }
-  if (host !== 'localhost' && host !== '127.0.0.1' && !extToken) {
+  if (lazyHost !== 'localhost' && lazyHost !== '127.0.0.1' && !extToken) {
     // Local bind không cần token; bind ra ngoài phải có token (D13).
     throw new ExtAgentError(
       'INVALID_PARAMS',
-      `EXT_TOKEN is required when host is ${host}`,
+      `EXT_TOKEN is required when host is ${lazyHost}`,
     );
   }
-  return { port, host, extToken };
+  return { port, host: lazyHost, extToken, cdpUrl };
 }

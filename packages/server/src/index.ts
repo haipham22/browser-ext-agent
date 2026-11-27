@@ -8,6 +8,7 @@ import { WsServer } from './ws-server.js';
 import { makeSendCommand } from './bridge.js';
 import { registerTools } from './mcp/tools.js';
 import { loadSecretConfig } from './secret-config.js';
+import { cdpClose } from './cdp.js';
 
 function pkgVersion(): string {
   try {
@@ -32,13 +33,14 @@ const mcp = new McpServer(
   { name: 'browser-ext-agent', version: pkgVersion() },
   { capabilities: { tools: {} } },
 );
-registerTools(mcp, { ws: wsServer, send: makeSendCommand(wsServer) });
+registerTools(mcp, { ws: wsServer, send: makeSendCommand(wsServer), cdpUrl: cfg.cdpUrl });
 
 // graceful shutdown (CONVENTIONS §6): ngừng nhận mới, đóng resource cuối cùng
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 function shutdown(): void {
   wsServer.close();
+  void cdpClose();
   process.exit(0);
 }
 

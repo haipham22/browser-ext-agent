@@ -17,6 +17,8 @@ export const ERROR_CODES = {
   INVALID_URL: 'url must be http(s)',
   INVALID_PARAMS: 'invalid command params',
   SECRET_MASKED: 'field value is masked — reading is not allowed',
+  CDP_NOT_AVAILABLE:
+    'Playwright bridge cannot reach Chrome DevTools — start Chrome with --remote-debugging-port=9222 or set CDP_URL',
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_CODES;
