@@ -1,100 +1,100 @@
-# SETUP — chạy được ngay sau khi clone
+# SETUP — from clone to running
 
-Từ zero tới lúc agent điều khiển được browser của bạn: ~5 phút.
+Zero to your agent driving your browser: ~5 minutes.
 
-## Yêu cầu
+## Prerequisites
 
-| Cần | Ghi chú |
+| Need | Notes |
 |---|---|
-| Node.js ≥ 20 | [nodejs.org](https://nodejs.org) hoặc `mise use node@20` |
-| pnpm ≥ 9 | `corepack enable` (đã có sẵn theo Node) hoặc `npm i -g pnpm` |
-| Chrome / Edge / Brave | Bản mới (MV3 service worker + WebSocket giữ worker sống cần Chrome ≥ 116) |
-| Claude Code (hoặc MCP client khác) | Để agent gọi tools |
+| Node.js ≥ 20 | [nodejs.org](https://nodejs.org) or `mise use node@20` |
+| pnpm ≥ 9 | `corepack enable` (bundled with Node) or `npm i -g pnpm` |
+| Chrome / Edge / Brave | Recent build (MV3 service worker + WebSocket keep-alive needs Chrome ≥ 116) |
+| Claude Code (or any MCP client) | So the agent can call the tools |
 
-## 1. Clone + cài đặt + build
+## 1. Clone, install, compile
 
 ```bash
 git clone https://github.com/haipham22/browser-ext-agent.git
 cd browser-ext-agent
 pnpm install
-pnpm build                       # typecheck + bundle server ra packages/server/release/
-cd packages/extension && node compile.mjs   # bundle extension ra packages/extension/release/
+pnpm build                       # typecheck + bundle the server into packages/server/release/
+cd packages/extension && node compile.mjs   # bundle the extension into packages/extension/release/
 cd ../..
 ```
 
-## 2. Cài extension vào Chrome
+## 2. Load the extension into Chrome
 
-1. Mở `chrome://extensions`
-2. Bật **Developer mode** (góc phải trên)
-3. **Load unpacked** → chọn thư mục `packages/extension/release/`
-4. (Nên) Ghim extension ra toolbar cho dễ click
+1. Open `chrome://extensions`
+2. Toggle **Developer mode** (top right)
+3. **Load unpacked** → pick the `packages/extension/release/` folder
+4. (Recommended) Pin the extension to the toolbar
 
-## 3. Chạy server
+## 3. Run the server
 
 ```bash
 node packages/server/release/index.js
 ```
 
-Log mong đợi: `[browser-ext-agent] MCP ready (stdio) | WS ws://localhost:8765 | token: none`
+Expected log: `[browser-ext-agent] MCP ready (stdio) | WS ws://localhost:8765 | token: none`
 
-Cổng/bind khác:
+Different port/bind:
 
 ```bash
-node packages/server/release/index.js --port 9000              # đổi cổng
-node packages/server/release/index.js --host 0.0.0.0 --token <secret>   # browser ở máy khác
+node packages/server/release/index.js --port 9000              # different port
+node packages/server/release/index.js --host 0.0.0.0 --token <secret>   # browser on another machine
 ```
 
-Tương đương bằng env: `PORT`, `HOST`, `EXT_TOKEN` (xem `deployment/.env.example`).
+Env equivalents: `PORT`, `HOST`, `EXT_TOKEN` (see `deployment/.env.example`).
 
-## 4. Nối extension ↔ server
+## 4. Connect the extension to the server
 
-Click icon **Browser Ext Agent** trên toolbar:
+Click the **Browser Ext Agent** icon in the toolbar:
 
-- **Server URL**: giữ mặc định `ws://localhost:8765` (đổi nếu server chạy máy khác)
-- **Token**: điền nếu server yêu cầu
-- Nhấn **Enable** → badge **ON** trên icon = đã nối
+- **Server URL**: keep the default `ws://localhost:8765` (change it if the server runs on another machine)
+- **Token**: fill in if the server requires one
+- Press **Enable** → badge shows **ON** when connected
 
-> Extension mặc định TẮT. Agent không tự bật được — đây là thiết kế (bạn mới là người cho phép).
+> The extension is OFF by default. The agent cannot enable itself — by design, you are the gatekeeper.
 
-## 5. Đăng ký MCP cho agent
+## 5. Register the MCP server with your agent
 
 ```bash
 claude mcp add browser-ext-agent -- node /absolute/path/to/browser-ext-agent/packages/server/release/index.js
 ```
 
-(Thay đường dẫn absolute nơi bạn clone. Restart session Claude Code.)
+(Use the absolute path where you cloned. Restart your Claude Code session.)
 
-## 6. Thử
+## 6. Try it
 
-Trong session agent, gọi lần lượt:
+In the agent session, call the tools in order:
 
 ```
 browser_navigate  { "url": "https://example.com" }
 browser_snapshot  {}
-browser_click     { "ref": "e12" }        # ref lấy từ snapshot
+browser_click     { "ref": "e12" }        # ref comes from the snapshot
 browser_console_logs {}
 ```
 
-Ví dụ câu thật: *"Mở voz.vn, liệt kê các chủ đề mới nhất ở box Máy tính"* — agent sẽ tự navigate → snapshot (lật pagination nếu trang dài) → đọc.
+Real-world prompt example: *"Open news.ycombinator.com and list the newest stories"* — the agent will navigate → snapshot (paging through if the page is long) → read.
 
-## Xử lý lỗi nhanh
+## Troubleshooting
 
-| Hiện tượng | Nguyên nhân / cách xử lý |
+| Symptom | Cause / fix |
 |---|---|
-| Tool trả `extension is not connected` | Server chưa chạy, hoặc sai URL/token trong popup — sửa rồi Enable lại |
-| Tool trả `extension is turned off` | Mở popup nhấn **Enable** |
-| Load unpacked không thấy extension | Kiểm tra đã build bước 1 (file `release/manifest.json` tồn tại); Google Chrome branded ≥137 chặn `--load-extension` qua CLI — dùng Load unpacked trên UI là bình thường |
-| Badge OFF dù đã Enable | Server chưa nghe đúng cổng — xem log bước 3 |
-| Snapshot báo `(... of N entries — next page ...)` | Trang dài — gọi `browser_snapshot {offset: <số trong footer>}` |
-| Muốn chặn domain nhạy cảm | Tạo file config JSON (`blockedDomains`, `blockedSelectors`, `sensitivePatterns`) rồi chạy server với `SECRET_CONFIG_PATH=/đường/dẫn/file.json` |
+| Tool returns `extension is not connected` | Server not running, or wrong URL/token in the popup — fix it, then Enable again |
+| Tool returns `extension is turned off` | Open the popup, press **Enable** |
+| Extension missing after Load unpacked | Check step 1 (does `release/manifest.json` exist?); note Google Chrome branded ≥137 blocks the `--load-extension` CLI flag — the UI button ("Load unpacked") is unaffected |
+| Badge OFF despite Enable | Server isn't listening on that port — check the step-3 log |
+| Snapshot footer shows `(... of N entries — next page ...)` | Long page — call `browser_snapshot {offset: <number from the footer>}` |
+| Want to block sensitive domains | Create a JSON config (`blockedDomains`, `blockedSelectors`, `sensitivePatterns`) and start the server with `SECRET_CONFIG_PATH=/path/to/file.json` |
 
-## Chạy test / dev
+## Tests / development
 
 ```bash
 pnpm test                                   # 16 unit tests
 pnpm --filter @haipham22/browser-ext-agent-extension exec tsc --noEmit   # typecheck
-cd packages/extension && node compile.mjs --watch  # rebuild extension khi sửa code
-pnpm dev:server                             # server chạy TS trực tiếp, auto-restart
+cd packages/extension && node compile.mjs --watch  # rebuild the extension on change
+pnpm dev:server                             # run the server from TS with auto-restart
 ```
 
-Chi tiết kiến trúc: [`context/ARCHITECTURE.md`](context/ARCHITECTURE.md) · Quyết định thiết kế: [`context/DECISIONS.md`](context/DECISIONS.md) · License: [MIT](LICENSE)
+Architecture: [`context/ARCHITECTURE.md`](context/ARCHITECTURE.md) · Design decisions: [`context/DECISIONS.md`](context/DECISIONS.md) · License: [MIT](LICENSE)
